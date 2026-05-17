@@ -46,36 +46,6 @@ const highlights = [
 export default function PublicHomePage() {
   return (
     <main className='site-shell'>
-      <header className='site-header'>
-        <div className='container nav-wrap'>
-          <div className='brand'>
-            <div className='brand-logo' aria-hidden='true'>
-              ✝
-            </div>
-            <div>
-              <p className='brand-title'>Баптисты</p>
-              <p className='brand-subtitle'>ВЕРА · СЕМЬЯ · СЛУЖЕНИЕ</p>
-            </div>
-          </div>
-
-          <nav className='main-nav' aria-label='Главное меню'>
-            <a href='#' className='active'>
-              ГЛАВНАЯ
-            </a>
-            <a href='#about'>О НАС</a>
-            <a href='#'>УЧЕНИЕ</a>
-            <a href='#'>НОВОСТИ</a>
-            <a href='#'>МЕРОПРИЯТИЯ</a>
-            <a href='#'>РЕСУРСЫ</a>
-            <a href='#'>КОНТАКТЫ</a>
-          </nav>
-
-          <Link href='/dashboard' className='donate-btn'>
-            ПОЖЕРТВОВАТЬ
-          </Link>
-        </div>
-      </header>
-
       <section className='hero'>
         <div className='hero-overlay'>
           <div className='container hero-content'>

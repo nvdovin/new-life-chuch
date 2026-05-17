@@ -28,3 +28,19 @@ class UserOut(BaseModel):
     full_name: str
     is_active: bool
     twofa_enabled: bool
+    roles: list[str] = []
+
+
+class UserCreateIn(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=2, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+    roles: list[str] = ['member']
+    is_active: bool = True
+
+
+class UserPatchIn(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=255)
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    roles: list[str] | None = None
+    is_active: bool | None = None

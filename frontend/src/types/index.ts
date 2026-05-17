@@ -1,9 +1,32 @@
-export type Role = 'admin' | 'editor' | 'staff' | 'member';
+export type Role = 'admin' | 'editor' | 'ministry_lead' | 'staff' | 'member';
 
 export interface UserSession {
   accessToken: string;
-  role: Role;
   email: string;
+  fullName: string;
+  avatar?: string;
+  roles: Role[];
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  fullName: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  user: {
+    email: string;
+    fullName: string;
+    avatar?: string;
+    roles: Role[];
+  };
 }
 
 export interface Sermon {

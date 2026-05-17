@@ -1,13 +1,16 @@
 from sqlalchemy import delete, select
+from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
-from app.models.models import Permission, Role, RoleType, role_permissions
+from app.models.models import Permission, Role, RoleType, User, role_permissions
+from app.security.auth import hash_password
 
 DEFAULT_PERMISSIONS = [
     'sermons.write', 'news.write', 'prayers.read', 'prayers.moderate',
     'ministries.write', 'tasks.write', 'knowledge.write', 'audit.read',
-    'users.delete', 'holidays.write'
+    'users.delete', 'holidays.write', 'users.manage'
 ]
 
 ROLE_PERMISSIONS: dict[RoleType, list[str]] = {
@@ -47,6 +50,24 @@ async def seed_rbac() -> None:
                         if code in perms
                     ],
                 )
+
+        admin_row = await session.execute(select(Role).where(Role.name == RoleType.ADMIN))
+        admin_role = admin_row.scalar_one()
+        admin_user_row = await session.execute(
+            select(User).options(selectinload(User.roles)).where(User.email == settings.bootstrap_admin_email)
+        )
+        admin_user = admin_user_row.scalar_one_or_none()
+        if admin_user is None:
+            admin_user = User(
+                email=settings.bootstrap_admin_email,
+                full_name=settings.bootstrap_admin_full_name,
+                password_hash=hash_password(settings.bootstrap_admin_password),
+                is_active=True,
+            )
+            admin_user.roles = [admin_role]
+            session.add(admin_user)
+        elif admin_role not in admin_user.roles:
+            admin_user.roles.append(admin_role)
         await session.commit()
 
 

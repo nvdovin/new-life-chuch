@@ -25,5 +25,9 @@ class Settings(BaseSettings):
     s3_secret_key: str = 'minioadmin'
     s3_bucket: str = 'newlife-media'
 
+    bootstrap_admin_email: str = 'admin@local'
+    bootstrap_admin_password: str = 'ChangeMe123!'
+    bootstrap_admin_full_name: str = 'Church Administrator'
+
 
 settings = Settings()

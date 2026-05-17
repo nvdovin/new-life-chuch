@@ -12,6 +12,11 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: '/ministries', label: 'Служения' },
     { href: '/audit', label: 'Аудит' },
   ],
+  ministry_lead: [
+    { href: '/dashboard', label: 'Дашборд' },
+    { href: '/ministries', label: 'Служения' },
+    { href: '/prayers', label: 'Молитвы' },
+  ],
   editor: [
     { href: '/dashboard', label: 'Дашборд' },
     { href: '/sermons', label: 'Проповеди' },
@@ -30,7 +35,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
 };
 
 export function Nav() {
-  const role = useSessionStore((s) => s.session?.role || 'member');
+  const role = useSessionStore((s) => s.session?.roles?.[0] || 'member');
   const links = roleLinks[role] || roleLinks.member;
   return (
     <nav className='mb-6 flex flex-wrap gap-3'>

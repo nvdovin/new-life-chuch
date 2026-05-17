@@ -3,6 +3,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import extract, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
 from app.middleware.rbac import current_user, optional_current_user, require_permission
@@ -13,12 +14,14 @@ from app.models.models import (
     Ministry,
     MinistryTask,
     News,
+    Role,
+    RoleType,
     PrayerRequest,
     PrayerSupport,
     Sermon,
     User,
 )
-from app.schemas.auth import LoginIn, RegisterIn, TokenPair, TwoFAEnableIn, UserOut
+from app.schemas.auth import LoginIn, RegisterIn, TokenPair, TwoFAEnableIn, UserCreateIn, UserOut, UserPatchIn
 from app.schemas.domain import (
     KnowledgeIn,
     KnowledgeOut,
@@ -59,7 +62,22 @@ def _user_out(user: User) -> UserOut:
         full_name=user.full_name,
         is_active=user.is_active,
         twofa_enabled=user.twofa_enabled,
+        roles=[str(role.name.value) for role in user.roles],
     )
+
+
+async def _resolve_roles(db: AsyncSession, role_names: list[str]) -> list[Role]:
+    if not role_names:
+        role_names = ['member']
+    try:
+        role_types = [RoleType(role_name) for role_name in role_names]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail='Unknown role in payload') from exc
+    result = await db.execute(select(Role).where(Role.name.in_(role_types)))
+    roles = result.scalars().all()
+    if len(roles) != len(set(role_types)):
+        raise HTTPException(status_code=400, detail='Unknown role in payload')
+    return roles
 
 
 @router.post('/auth/register', response_model=TokenPair)
@@ -72,6 +90,8 @@ async def register(payload: RegisterIn, db: AsyncSession = Depends(get_db)) -> T
         User,
         {'email': payload.email, 'full_name': payload.full_name, 'password_hash': hash_password(payload.password)},
     )
+    user.roles = await _resolve_roles(db, ['member'])
+    await db.commit()
     return TokenPair(access_token=create_access_token(str(user.id)), refresh_token=create_refresh_token(str(user.id)))
 
 
@@ -81,11 +101,74 @@ async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)) -> TokenPa
     user = result.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail='Invalid credentials')
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail='User is disabled')
     return TokenPair(access_token=create_access_token(str(user.id)), refresh_token=create_refresh_token(str(user.id)))
 
 
 @router.get('/users/me', response_model=UserOut)
 async def me(user: User = Depends(current_user)) -> UserOut:
+    return _user_out(user)
+
+
+@router.get('/roles', response_model=list[str], dependencies=[Depends(require_permission('users.manage'))])
+async def list_roles() -> list[str]:
+    return ['admin', 'editor', 'ministry_lead', 'staff', 'member']
+
+
+@router.get('/users', response_model=list[UserOut], dependencies=[Depends(require_permission('users.manage'))])
+async def list_users(db: AsyncSession = Depends(get_db)) -> list[UserOut]:
+    users = await list_by_stmt(
+        db, select(User).options(selectinload(User.roles)).order_by(User.created_at.desc())
+    )
+    return [_user_out(user) for user in users]
+
+
+@router.post('/users', response_model=UserOut, dependencies=[Depends(require_permission('users.manage'))])
+async def create_user(payload: UserCreateIn, db: AsyncSession = Depends(get_db), actor: User = Depends(current_user)) -> UserOut:
+    existing = await db.execute(select(User).where(User.email == payload.email))
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail='Email already exists')
+    user = await create(
+        db,
+        User,
+        {
+            'email': payload.email,
+            'full_name': payload.full_name,
+            'password_hash': hash_password(payload.password),
+            'is_active': payload.is_active,
+        },
+    )
+    user.roles = await _resolve_roles(db, payload.roles)
+    await db.commit()
+    await db.refresh(user)
+    await write_audit(db, str(actor.id), 'create', 'users', str(user.id), payload.model_dump(exclude={'password'}))
+    return _user_out(user)
+
+
+@router.patch('/users/{user_id}', response_model=UserOut, dependencies=[Depends(require_permission('users.manage'))])
+async def patch_user(
+    user_id: str,
+    payload: UserPatchIn,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(current_user),
+) -> UserOut:
+    try:
+        user = await get_or_404(db, User, user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='Not found') from exc
+    patch = payload.model_dump(exclude_none=True)
+    if 'full_name' in patch:
+        user.full_name = patch['full_name']
+    if 'is_active' in patch:
+        user.is_active = patch['is_active']
+    if 'password' in patch:
+        user.password_hash = hash_password(patch['password'])
+    if 'roles' in patch:
+        user.roles = await _resolve_roles(db, patch['roles'])
+    await db.commit()
+    await db.refresh(user)
+    await write_audit(db, str(actor.id), 'update', 'users', str(user.id), payload.model_dump(exclude={'password'}))
     return _user_out(user)
 
 
@@ -402,6 +485,17 @@ async def patch_holiday(holiday_id: str, payload: HolidayPatch, db: AsyncSession
     obj = await update_entity(db, obj, payload.model_dump(exclude_none=True))
     await write_audit(db, str(user.id), 'update', 'holidays', str(obj.id), payload.model_dump(exclude_none=True))
     return obj
+
+
+@router.delete('/holidays/{holiday_id}', dependencies=[Depends(require_permission('holidays.write'))])
+async def remove_holiday(holiday_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> dict[str, str]:
+    try:
+        obj = await get_or_404(db, Holiday, holiday_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='Not found') from exc
+    await delete_entity(db, obj)
+    await write_audit(db, str(user.id), 'delete', 'holidays', holiday_id, {})
+    return {'status': 'deleted'}
 
 
 @router.get('/audit-logs', response_model=list[dict], dependencies=[Depends(require_permission('audit.read'))])
