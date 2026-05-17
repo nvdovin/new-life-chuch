@@ -14,4 +14,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app ./
 EXPOSE 3000
-CMD ["sh", "-c", "test -f .next/BUILD_ID || npm run build; npm run start"]
+CMD ["sh", "-c", "set -e; if [ ! -f .next/BUILD_ID ]; then npm run build; fi; npm run start"]
