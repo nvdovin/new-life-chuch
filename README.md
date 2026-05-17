@@ -13,6 +13,15 @@ Production-oriented monorepo for church operations, content management, prayer m
 ```bash
 docker compose up --build
 ```
+For low-disk VPS, start the core stack only (without ClickHouse/MinIO):
+```bash
+docker compose up --build
+```
+
+To start the full stack including ClickHouse + MinIO:
+```bash
+docker compose --profile full up --build
+```
 
 - Frontend: `http://localhost:3000`
 - API: `http://localhost:8000/api/v1`
