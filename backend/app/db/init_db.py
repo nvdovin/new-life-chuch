@@ -1,9 +1,8 @@
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import delete, select
 
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
-from app.models.models import Permission, Role, RoleType
+from app.models.models import Permission, Role, RoleType, role_permissions
 
 DEFAULT_PERMISSIONS = [
     'sermons.write', 'news.write', 'prayers.read', 'prayers.moderate',
@@ -32,15 +31,22 @@ async def seed_rbac() -> None:
         perms = {p.code: p for p in perm_rows.scalars().all()}
 
         for role_type, role_perm_codes in ROLE_PERMISSIONS.items():
-            role_row = await session.execute(
-                select(Role).options(selectinload(Role.permissions)).where(Role.name == role_type)
-            )
+            role_row = await session.execute(select(Role).where(Role.name == role_type))
             role = role_row.scalar_one_or_none()
             if role is None:
                 role = Role(name=role_type)
                 session.add(role)
                 await session.flush()
-            role.permissions = [perms[c] for c in role_perm_codes if c in perms]
+            await session.execute(delete(role_permissions).where(role_permissions.c.role_id == role.id))
+            if role_perm_codes:
+                await session.execute(
+                    role_permissions.insert(),
+                    [
+                        {'role_id': role.id, 'permission_id': perms[code].id}
+                        for code in role_perm_codes
+                        if code in perms
+                    ],
+                )
         await session.commit()
 
 
