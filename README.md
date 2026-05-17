@@ -17,7 +17,8 @@ docker compose up --build
 - Frontend: `http://localhost:3000`
 - API: `http://localhost:8000/api/v1`
 - OpenAPI: `http://localhost:8000/api/v1/openapi.json`
-- MinIO Console: `http://localhost:9001`
+- MinIO API: `http://localhost:19000` (configurable via `MINIO_API_PORT`)
+- MinIO Console: `http://localhost:19001` (configurable via `MINIO_CONSOLE_PORT`)
 
 ## Backend Highlights
 - JWT access/refresh auth
