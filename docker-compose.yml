@@ -33,7 +33,10 @@ services:
 
   backend:
     build: ./backend
-    env_file: ./backend/.env
+    env_file:
+      - path: ./backend/.env
+        required: false
+      - path: ./backend/.env.example
     depends_on: [postgres, redis]
     ports: ['8000:8000']
 
@@ -41,7 +44,7 @@ services:
     build: ./frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_API_URL: /api/v1
     depends_on: [backend]
     ports: ['3000:3000']
 
