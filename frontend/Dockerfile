@@ -12,8 +12,6 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package.json ./package.json
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app ./
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "test -f .next/BUILD_ID || npm run build; npm run start"]
