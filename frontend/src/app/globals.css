@@ -3,11 +3,377 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f7faf8;
-  --fg: #12231b;
+  --blue: #1f63c4;
+  --blue-dark: #174e9d;
+  --ink: #102646;
+  --text: #24384f;
+  --muted: #6a7887;
+  --line: #e5eaf1;
+  --card: #f8fbff;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background: radial-gradient(circle at top, #ebf8f1 0%, var(--bg) 55%);
-  color: var(--fg);
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.container {
+  width: min(1280px, 92vw);
+  margin: 0 auto;
+}
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.nav-wrap {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  color: var(--blue);
+  font-size: 48px;
+  line-height: 1;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.brand-subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #5f6f82;
+  letter-spacing: 0.06em;
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 14px;
+  color: #263a56;
+}
+
+.main-nav a {
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+}
+
+.main-nav a.active {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.donate-btn,
+.btn-primary,
+.btn-secondary {
+  border-radius: 7px;
+  padding: 14px 26px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.donate-btn,
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+  border: 1px solid var(--blue);
+}
+
+.donate-btn:hover,
+.btn-primary:hover {
+  background: var(--blue-dark);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--blue);
+  border: 1px solid #75a3e5;
+}
+
+.hero {
+  min-height: 670px;
+  background-image: linear-gradient(90deg, rgba(242, 248, 255, 0.86) 0%, rgba(242, 248, 255, 0.2) 50%, rgba(0, 0, 0, 0.1) 100%),
+    url('https://images.unsplash.com/photo-1507692049790-de58290a4334?auto=format&fit=crop&w=1800&q=80');
+  background-size: cover;
+  background-position: center;
+}
+
+.hero-overlay {
+  min-height: 670px;
+  display: flex;
+  align-items: center;
+}
+
+.hero-content {
+  max-width: 700px;
+  padding: 48px 0;
+}
+
+.hero h1 {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(38px, 5vw, 76px);
+  line-height: 1.08;
+}
+
+.hero .verse {
+  margin: 0 0 20px;
+  font-size: 38px;
+  color: #2f425a;
+}
+
+.hero-text {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.52;
+  max-width: 620px;
+}
+
+.hero-actions {
+  margin-top: 34px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.highlights {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.highlight-card {
+  padding: 42px 28px;
+  border-right: 1px solid var(--line);
+}
+
+.highlight-card:last-child {
+  border-right: 0;
+}
+
+.icon-wrap {
+  width: 44px;
+  height: 44px;
+  color: var(--blue);
+}
+
+.icon-wrap svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.highlight-card h2 {
+  margin: 16px 0 10px;
+  color: var(--ink);
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.highlight-card p {
+  margin: 0 0 14px;
+  color: #43586f;
+  font-size: 28px;
+  line-height: 1.45;
+}
+
+.highlight-card a {
+  color: var(--blue);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.about {
+  background: var(--card);
+  padding: 60px 0;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 42px;
+  align-items: center;
+}
+
+.about h2 {
+  margin: 0 0 18px;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(34px, 4vw, 54px);
+}
+
+.about p {
+  margin: 0 0 34px;
+  font-size: 31px;
+  color: #3f536b;
+  line-height: 1.5;
+  max-width: 580px;
+}
+
+.about-image {
+  min-height: 380px;
+  border-radius: 10px;
+  background-image: url('https://images.unsplash.com/photo-1518911710364-17ec553bde4a?auto=format&fit=crop&w=1200&q=80');
+  background-size: cover;
+  background-position: center;
+}
+
+@media (max-width: 1200px) {
+  .main-nav {
+    gap: 16px;
+    font-size: 13px;
+  }
+
+  .brand-title {
+    font-size: 42px;
+  }
+
+  .highlight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .highlight-card:nth-child(2) {
+    border-right: 0;
+  }
+
+  .highlight-card:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-wrap {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 20px 0;
+  }
+
+  .main-nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero,
+  .hero-overlay {
+    min-height: 560px;
+  }
+
+  .hero .verse {
+    font-size: 30px;
+  }
+
+  .hero-text {
+    font-size: 26px;
+  }
+
+  .highlight-card h2 {
+    font-size: 28px;
+  }
+
+  .highlight-card p {
+    font-size: 22px;
+  }
+
+  .highlight-card a {
+    font-size: 20px;
+  }
+
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: min(1280px, 94vw);
+  }
+
+  .brand-title {
+    font-size: 36px;
+  }
+
+  .hero,
+  .hero-overlay {
+    min-height: 500px;
+  }
+
+  .hero-content {
+    max-width: 100%;
+  }
+
+  .hero-text {
+    font-size: 22px;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .donate-btn {
+    width: 100%;
+  }
+
+  .hero-actions {
+    width: 100%;
+  }
+
+  .highlight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .highlight-card {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .highlight-card:last-child {
+    border-bottom: 0;
+  }
+
+  .about p {
+    font-size: 22px;
+  }
 }
