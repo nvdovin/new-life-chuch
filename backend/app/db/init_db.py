@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
@@ -31,7 +32,9 @@ async def seed_rbac() -> None:
         perms = {p.code: p for p in perm_rows.scalars().all()}
 
         for role_type, role_perm_codes in ROLE_PERMISSIONS.items():
-            role_row = await session.execute(select(Role).where(Role.name == role_type))
+            role_row = await session.execute(
+                select(Role).options(selectinload(Role.permissions)).where(Role.name == role_type)
+            )
             role = role_row.scalar_one_or_none()
             if role is None:
                 role = Role(name=role_type)
