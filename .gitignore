@@ -1,23 +1,31 @@
-# Python
+```
+# Compiled and build artifacts
+*.pyc
 __pycache__/
-*.py[cod]
-*.egg-info/
+*.o
+*.obj
+
+# Dependencies
 .venv/
-
-# Node
+venv/
 node_modules/
-.next/
 
-# Env
-.env
-.env.*
-!backend/.env.example
-
-# OS
-.DS_Store
-
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
 
-# Local runtime
-/tmp/
+# Environment
+.env
+.env.local
+.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Database and migrations
+*.db
+*.db-journal
+alembic/versions/*.pyc
+```

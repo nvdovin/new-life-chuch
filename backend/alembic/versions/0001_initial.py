@@ -16,9 +16,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE roletype AS ENUM ('ADMIN', 'EDITOR', 'STAFF', 'MEMBER')")
-    op.execute("CREATE TYPE prayerstatus AS ENUM ('ACTIVE', 'CLOSED')")
-    op.execute("CREATE TYPE priority AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')")
+    op.execute("CREATE TYPE roletype AS ENUM ('admin', 'editor', 'ministry_lead', 'staff', 'member')")
+    op.execute("CREATE TYPE prayerstatus AS ENUM ('active', 'closed')")
+    op.execute("CREATE TYPE priority AS ENUM ('low', 'medium', 'high', 'critical')")
     op.create_table('users',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column('email', sa.String(255), nullable=False, unique=True),
