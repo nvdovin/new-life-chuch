@@ -20,6 +20,8 @@ def upgrade() -> None:
     op.execute("CREATE TYPE roletype AS ENUM ('admin', 'editor', 'ministry_lead', 'staff', 'member')")
     op.execute("CREATE TYPE prayerstatus AS ENUM ('active', 'closed')")
     op.execute("CREATE TYPE priority AS ENUM ('low', 'medium', 'high', 'critical')")
+    
+    # Create users table
     op.create_table('users',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column('email', sa.String(255), nullable=False, unique=True),
@@ -33,6 +35,31 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
     )
     op.create_index('ix_users_email', 'users', ['email'], unique=True)
+    
+    # Create roles table
+    op.create_table('roles',
+        sa.Column('id', sa.Integer(), autoincrement=True, primary_key=True),
+        sa.Column('name', sa.Enum('admin', 'editor', 'ministry_lead', 'staff', 'member', name='roletype'), unique=True, nullable=False),
+    )
+    
+    # Create permissions table
+    op.create_table('permissions',
+        sa.Column('id', sa.Integer(), autoincrement=True, primary_key=True),
+        sa.Column('code', sa.String(100), unique=True, nullable=False, index=True),
+        sa.Column('description', sa.String(255), nullable=False),
+    )
+    
+    # Create role_permissions association table
+    op.create_table('role_permissions',
+        sa.Column('role_id', sa.Integer(), sa.ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
+        sa.Column('permission_id', sa.Integer(), sa.ForeignKey('permissions.id', ondelete='CASCADE'), primary_key=True),
+    )
+    
+    # Create user_roles association table
+    op.create_table('user_roles',
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
+        sa.Column('role_id', sa.Integer(), sa.ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
+    )
 
 
 def downgrade() -> None:

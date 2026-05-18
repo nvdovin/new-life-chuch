@@ -85,14 +85,18 @@ async def register(payload: RegisterIn, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=409, detail='Email already exists')
+    
+    # Resolve roles BEFORE creating user to ensure they exist
+    roles = await _resolve_roles(db, ['member'])
+    
     user = await create(
         db,
         User,
         {'email': payload.email, 'full_name': payload.full_name, 'password_hash': hash_password(payload.password)},
     )
-    user.roles = await _resolve_roles(db, ['member'])
+    user.roles = roles
     await db.commit()
-    await db.refresh(user)
+    await db.refresh(user, attribute_names=['roles'])
     user_data = {
         'id': str(user.id),
         'email': user.email,
