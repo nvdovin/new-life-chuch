@@ -24,6 +24,7 @@ ROLE_PERMISSIONS: dict[RoleType, list[str]] = {
 
 async def seed_rbac() -> None:
     async with SessionLocal() as session:
+        # Create all permissions first
         for code in DEFAULT_PERMISSIONS:
             found = await session.execute(select(Permission).where(Permission.code == code))
             if found.scalar_one_or_none() is None:
@@ -33,6 +34,7 @@ async def seed_rbac() -> None:
         perm_rows = await session.execute(select(Permission))
         perms = {p.code: p for p in perm_rows.scalars().all()}
 
+        # Create all roles - CRITICAL: Ensure ALL roles exist, especially 'member'
         for role_type, role_perm_codes in ROLE_PERMISSIONS.items():
             role_row = await session.execute(select(Role).where(Role.name == role_type))
             role = role_row.scalar_one_or_none()
@@ -40,6 +42,11 @@ async def seed_rbac() -> None:
                 role = Role(name=role_type)
                 session.add(role)
                 await session.flush()
+                print(f"Created role: {role_type.value}")
+            else:
+                print(f"Role already exists: {role_type.value}")
+            
+            # Update role permissions
             await session.execute(delete(role_permissions).where(role_permissions.c.role_id == role.id))
             if role_perm_codes:
                 await session.execute(
@@ -51,6 +58,7 @@ async def seed_rbac() -> None:
                     ],
                 )
 
+        # Create admin user if not exists
         admin_row = await session.execute(select(Role).where(Role.name == RoleType.ADMIN))
         admin_role = admin_row.scalar_one()
         admin_user_row = await session.execute(
@@ -66,9 +74,11 @@ async def seed_rbac() -> None:
             )
             admin_user.roles = [admin_role]
             session.add(admin_user)
+            print(f"Created admin user: {settings.bootstrap_admin_email}")
         elif admin_role not in admin_user.roles:
             admin_user.roles.append(admin_role)
         await session.commit()
+        print("RBAC seeding completed successfully")
 
 
 async def init_models() -> None:
