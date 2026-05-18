@@ -3,6 +3,7 @@
 Revision ID: 0001_initial
 Revises: 
 Create Date: 2026-05-17
+
 """
 
 from alembic import op
@@ -35,8 +36,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index('ix_users_email', table_name='users')
-    op.drop_table('users')
     op.execute('DROP TYPE IF EXISTS priority')
     op.execute('DROP TYPE IF EXISTS prayerstatus')
     op.execute('DROP TYPE IF EXISTS roletype')

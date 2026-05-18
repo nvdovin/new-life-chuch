@@ -80,8 +80,8 @@ async def _resolve_roles(db: AsyncSession, role_names: list[str]) -> list[Role]:
     return roles
 
 
-@router.post('/auth/register', response_model=TokenPair)
-async def register(payload: RegisterIn, db: AsyncSession = Depends(get_db)) -> TokenPair:
+@router.post('/auth/register')
+async def register(payload: RegisterIn, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=409, detail='Email already exists')
@@ -92,18 +92,43 @@ async def register(payload: RegisterIn, db: AsyncSession = Depends(get_db)) -> T
     )
     user.roles = await _resolve_roles(db, ['member'])
     await db.commit()
-    return TokenPair(access_token=create_access_token(str(user.id)), refresh_token=create_refresh_token(str(user.id)))
+    await db.refresh(user)
+    user_data = {
+        'id': str(user.id),
+        'email': user.email,
+        'fullName': user.full_name,
+        'avatar': None,
+        'roles': [str(role.name.value) for role in user.roles],
+    }
+    return {
+        'accessToken': create_access_token(str(user.id)),
+        'refreshToken': create_refresh_token(str(user.id)),
+        'tokenType': 'bearer',
+        'user': user_data,
+    }
 
 
-@router.post('/auth/login', response_model=TokenPair)
-async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)) -> TokenPair:
-    result = await db.execute(select(User).where(User.email == payload.email))
+@router.post('/auth/login')
+async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).options(selectinload(User.roles)).where(User.email == payload.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail='Invalid credentials')
     if not user.is_active:
         raise HTTPException(status_code=403, detail='User is disabled')
-    return TokenPair(access_token=create_access_token(str(user.id)), refresh_token=create_refresh_token(str(user.id)))
+    user_data = {
+        'id': str(user.id),
+        'email': user.email,
+        'fullName': user.full_name,
+        'avatar': None,
+        'roles': [str(role.name.value) for role in user.roles],
+    }
+    return {
+        'accessToken': create_access_token(str(user.id)),
+        'refreshToken': create_refresh_token(str(user.id)),
+        'tokenType': 'bearer',
+        'user': user_data,
+    }
 
 
 @router.get('/users/me', response_model=UserOut)
