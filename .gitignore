@@ -1,23 +1,39 @@
+```
 # Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
+*.pyc
+*.pyo
+*.pyd
 
-# Node
-node_modules/
-.next/
+# Alembic
+alembic/versions/__pycache__/
 
-# Env
+# Environment
 .env
-.env.*
-!backend/.env.example
+.env.local
+*.env.*
 
-# OS
-.DS_Store
+# Dependencies
+.venv/
+venv/
+env/
+ENV/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs
 *.log
 
-# Local runtime
-/tmp/
+# OS
+.DS_Store
+Thumbs.db
+```

@@ -17,9 +17,22 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE roletype AS ENUM ('ADMIN', 'EDITOR', 'MINISTRY_LEAD', 'STAFF', 'MEMBER')")
-    op.execute("CREATE TYPE prayerstatus AS ENUM ('ACTIVE', 'CLOSED')")
-    op.execute("CREATE TYPE priority AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')")
+    op.execute("CREATE TYPE roletype AS ENUM ('admin', 'editor', 'ministry_lead', 'staff', 'member')")
+    op.execute("CREATE TYPE prayerstatus AS ENUM ('active', 'closed')")
+    op.execute("CREATE TYPE priority AS ENUM ('low', 'medium', 'high', 'critical')")
+    op.create_table('users',
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('email', sa.String(255), nullable=False, unique=True),
+        sa.Column('full_name', sa.String(255), nullable=False),
+        sa.Column('password_hash', sa.String(255), nullable=False),
+        sa.Column('phone_encrypted', sa.LargeBinary(), nullable=True),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('twofa_enabled', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('twofa_secret_encrypted', sa.LargeBinary(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
+    )
+    op.create_index('ix_users_email', 'users', ['email'], unique=True)
 
 
 def downgrade() -> None:
