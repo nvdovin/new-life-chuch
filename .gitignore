@@ -1,39 +1,27 @@
-```
-# Python
+```gitignore
+# Python cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Alembic
-alembic/versions/__pycache__/
-
-# Environment
+# Dependencies
+venv/
+.venv/
 .env
 .env.local
-*.env.*
+.env.*
 
-# Dependencies
-.venv/
-venv/
-env/
-ENV/
-
-# Build artifacts
-dist/
-build/
-*.egg-info/
+# Logs and temp files
+*.log
+*.tmp
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Logs
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
+# Build artifacts
+dist/
+build/
+target/
 ```

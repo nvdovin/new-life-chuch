@@ -92,7 +92,7 @@ async def register(payload: RegisterIn, db: AsyncSession = Depends(get_db)):
     )
     user.roles = await _resolve_roles(db, ['member'])
     await db.commit()
-    await db.refresh(user)
+    await db.refresh(user, attribute_names=['roles'])
     user_data = {
         'id': str(user.id),
         'email': user.email,
