@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Скрипт для пересоздания базы данных и применения миграций Alembic.
+Скрипт для пересоздания базы данных и применения миграций Alembic через Docker Compose.
 
 Использование:
     python reset_db.py
 
 Требования:
-    - Установлены зависимости проекта (alembic, sqlalchemy, asyncpg)
-    - База данных PostgreSQL доступна по адресу из alembic.ini
-    - Пользователь БД имеет права на создание/удаление баз данных
+    - Docker и Docker Compose установлены
+    - Контейнеры запущены (docker compose up -d)
 """
 
 import os
@@ -16,9 +15,9 @@ import sys
 import subprocess
 from pathlib import Path
 
-# Переходим в директорию backend
-BACKEND_DIR = Path(__file__).parent.resolve()
-os.chdir(BACKEND_DIR)
+# Переходим в директорию проекта (родительскую для backend)
+PROJECT_DIR = Path(__file__).parent.parent.resolve()
+os.chdir(PROJECT_DIR)
 
 # Цвета для вывода
 GREEN = '\033[92m'
@@ -37,86 +36,101 @@ def print_error(message: str):
     print(f"{RED}Ошибка: {message}{RESET}")
 
 
-def run_command(command: list, description: str) -> bool:
-    """Выполнение команды и проверка результата."""
+def run_docker_command(command: list, description: str, check_output: bool = True) -> bool:
+    """Выполнение команды docker compose."""
     print_status(f"Выполнение: {description}", YELLOW)
     try:
         result = subprocess.run(
-            command,
-            cwd=BACKEND_DIR,
+            ['docker', 'compose'] + command,
+            cwd=PROJECT_DIR,
             capture_output=True,
             text=True
         )
         if result.returncode != 0:
             print_error(f"Команда не выполнена:\n{result.stderr}")
             return False
-        if result.stdout:
+        if check_output and result.stdout:
             print(result.stdout)
         return True
+    except FileNotFoundError:
+        print_error("Docker не найден. Убедитесь, что Docker установлен.")
+        return False
     except Exception as e:
         print_error(f"Исключение при выполнении: {e}")
         return False
 
 
-def drop_database(db_name: str, user: str, host: str, port: str) -> bool:
-    """Удаление существующей базы данных."""
-    print_status(f"Удаление базы данных '{db_name}' если существует...", YELLOW)
-    
-    # Команда для удаления БД (подключаемся к postgres)
-    cmd = [
-        'psql',
-        '-h', host,
-        '-p', port,
-        '-U', user,
-        '-d', 'postgres',
-        '-c', f'DROP DATABASE IF EXISTS {db_name};'
-    ]
-    
-    env = os.environ.copy()
-    env['PGPASSWORD'] = 'postgres'  # Пароль по умолчанию из alembic.ini
-    
+def check_containers_running() -> bool:
+    """Проверка, запущены ли контейнеры."""
+    print_status("Проверка состояния контейнеров...", YELLOW)
     try:
         result = subprocess.run(
-            cmd,
+            ['docker', 'compose', 'ps', 'postgres'],
+            cwd=PROJECT_DIR,
             capture_output=True,
-            text=True,
-            env=env
+            text=True
         )
-        if result.returncode != 0:
-            print_error(f"Не удалось удалить БД:\n{result.stderr}")
-            return False
-        print(result.stdout)
-        return True
-    except FileNotFoundError:
-        print_error("psql не найден. Убедитесь, что PostgreSQL клиент установлен.")
-        return False
+        if "Up" in result.stdout:
+            return True
+        else:
+            print_status("Контейнер postgres не запущен. Запускаем сервисы...", YELLOW)
+            run_docker_command(['up', '-d', 'postgres', 'redis'], 'Запуск postgres и redis')
+            print_status("Ожидание готовности PostgreSQL (30 секунд)...", YELLOW)
+            import time
+            time.sleep(30)
+            return True
     except Exception as e:
-        print_error(f"Исключение: {e}")
+        print_error(f"Ошибка проверки контейнеров: {e}")
         return False
 
 
-def create_database(db_name: str, user: str, host: str, port: str) -> bool:
-    """Создание новой базы данных."""
-    print_status(f"Создание базы данных '{db_name}'...", YELLOW)
-    
-    cmd = [
-        'psql',
-        '-h', host,
-        '-p', port,
-        '-U', user,
-        '-d', 'postgres',
-        '-c', f'CREATE DATABASE {db_name};'
-    ]
-    
-    env = os.environ.copy()
-    env['PGPASSWORD'] = 'postgres'
+def drop_and_create_database(db_name: str, db_user: str) -> bool:
+    """Удаление и создание базы данных через docker exec."""
+    # Проверяем существование БД
+    print_status(f"Проверка существования базы данных '{db_name}'...", YELLOW)
+    check_cmd = ['exec', '-T', 'postgres', 'psql', '-U', db_user, '-d', 'postgres', 
+                 '-tc', f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'"]
     
     try:
         result = subprocess.run(
-            cmd,
+            ['docker', 'compose'] + check_cmd,
+            cwd=PROJECT_DIR,
             capture_output=True,
-            text=True,
-            env=env
+            text=True
+        )
+        db_exists = '1' in result.stdout
+        
+        if db_exists:
+            print_status(f"Удаление базы данных '{db_name}'...", YELLOW)
+            drop_cmd = ['exec', '-T', 'postgres', 'psql', '-U', db_user, '-d', 'postgres',
+                       '-c', f'DROP DATABASE IF EXISTS {db_name};']
+            result = subprocess.run(
+                ['docker', 'compose'] + drop_cmd,
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                print_error(f"Не удалось удалить БД:\n{result.stderr}")
+                return False
+            print(result.stdout)
+        else:
+            print_status(f"База данных '{db_name}' не существовала, пропускаем удаление.", YELLOW)
+    except Exception as e:
+        print_error(f"Ошибка при удалении БД: {e}")
+        return False
+    
+    # Создание БД
+    print_status(f"Создание базы данных '{db_name}'...", YELLOW)
+    create_cmd = ['exec', '-T', 'postgres', 'psql', '-U', db_user, '-d', 'postgres',
+                 '-c', f'CREATE DATABASE {db_name};']
+    
+    try:
+        result = subprocess.run(
+            ['docker', 'compose'] + create_cmd,
+            cwd=PROJECT_DIR,
+            capture_output=True,
+            text=True
         )
         if result.returncode != 0:
             print_error(f"Не удалось создать БД:\n{result.stderr}")
@@ -124,62 +138,72 @@ def create_database(db_name: str, user: str, host: str, port: str) -> bool:
         print(result.stdout)
         return True
     except Exception as e:
-        print_error(f"Исключение: {e}")
+        print_error(f"Ошибка при создании БД: {e}")
         return False
+
+
+def apply_migrations() -> bool:
+    """Применение миграций Alembic."""
+    print_status("Применение миграций Alembic...", YELLOW)
+    return run_docker_command(['exec', '-T', 'backend', 'alembic', 'upgrade', 'head'],
+                             'alembic upgrade head')
+
+
+def check_migrations() -> bool:
+    """Проверка статуса миграций."""
+    print_status("Проверка статуса миграций...", YELLOW)
+    return run_docker_command(['exec', '-T', 'backend', 'alembic', 'current'],
+                             'alembic current', check_output=False)
 
 
 def main():
     """Основная функция."""
     print_status("=" * 60, GREEN)
-    print_status("Скрипт пересоздания базы данных и применения миграций", GREEN)
+    print_status("Скрипт пересоздания базы данных и применения миграций (Docker)", GREEN)
     print_status("=" * 60, GREEN)
     
-    # Параметры подключения из alembic.ini
-    # postgresql+asyncpg://postgres:postgres@postgres:5432/newlife
+    # Параметры
     db_user = os.environ.get('DB_USER', 'postgres')
-    db_password = os.environ.get('DB_PASSWORD', 'postgres')
-    db_host = os.environ.get('DB_HOST', 'postgres')
-    db_port = os.environ.get('DB_PORT', '5432')
     db_name = os.environ.get('DB_NAME', 'newlife')
     
-    print_status(f"\nПараметры подключения:", YELLOW)
-    print(f"  Хост: {db_host}:{db_port}")
-    print(f"  Пользователь: {db_user}")
+    print_status(f"\nПараметры:", YELLOW)
     print(f"  База данных: {db_name}")
+    print(f"  Пользователь: {db_user}")
+    print(f"  Проект: {PROJECT_DIR}")
     print()
     
-    # Шаг 1: Удаление существующей БД
-    if not drop_database(db_name, db_user, db_host, db_port):
-        print_error("Не удалось удалить базу данных. Продолжение невозможно.")
+    # Проверка Docker
+    try:
+        subprocess.run(['docker', '--version'], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print_error("Docker не найден. Установите Docker.")
         sys.exit(1)
     
-    # Шаг 2: Создание новой БД
-    if not create_database(db_name, db_user, db_host, db_port):
-        print_error("Не удалось создать базу данных. Продолжение невозможно.")
+    # Проверка контейнеров
+    if not check_containers_running():
+        print_error("Не удалось подготовить контейнеры.")
         sys.exit(1)
     
-    # Шаг 3: Применение миграций Alembic
-    print_status("\nПрименение миграций Alembic...", YELLOW)
+    # Удаление и создание БД
+    if not drop_and_create_database(db_name, db_user):
+        print_error("Не удалось пересоздать базу данных.")
+        sys.exit(1)
     
-    # Устанавливаем переменную окружения для пароля
-    env = os.environ.copy()
-    env['PGPASSWORD'] = db_password
-    
-    if not run_command(
-        ['alembic', 'upgrade', 'head'],
-        'alembic upgrade head'
-    ):
+    # Применение миграций
+    if not apply_migrations():
         print_error("Не удалось применить миграции.")
         sys.exit(1)
     
-    # Шаг 4: Проверка статуса миграций
-    print_status("\nПроверка статуса миграций...", YELLOW)
-    run_command(['alembic', 'current'], 'alembic current')
+    # Проверка статуса
+    check_migrations()
     
     print_status("\n" + "=" * 60, GREEN)
     print_status("База данных успешно пересоздана и миграции применены!", GREEN)
     print_status("=" * 60, GREEN)
     print_status(f"\nБаза данных '{db_name}' готова к использованию.", GREEN)
+    print()
+    print_status("Примечание: Для создания администратора выполните:", YELLOW)
+    print("  docker compose exec backend python -m app.scripts.create_admin")
 
 
 if __name__ == '__main__':
